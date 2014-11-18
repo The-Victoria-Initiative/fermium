@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Fermium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Matthew Tamsett">
+    <link rel="shortcut icon" href="/fermium/03/images/icon_26773.png"/>
+    <link rel="apple-touch-icon" sizes="57x57" href="/fermium/03/images/icon_26773_primary_white_bg_57x57.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/fermium/03/images/icon_26773_primary_white_bg_114x114.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/fermium/03/images/icon_26773_primary_white_bg_72x72.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/fermium/03/images/icon_26773_primary_white_bg_144x144.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/fermium/03/images/icon_26773_primary_white_bg_60x60.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/fermium/03/images/icon_26773_primary_white_bg_120x120.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/fermium/03/images/icon_26773_primary_white_bg_76x76.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/fermium/03/images/icon_26773_primary_white_bg_152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/fermium/03/images/icon_26773_primary_white_bg_180x180.png">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+    <!-- Bootstrap styling -->
+    <link href="http://nounr.com/static/bootstrap-3.2.0-dist/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Style -->
+    <style>
+      .axis path,
+      .axis line {
+        fill: none;
+        stroke: #000;
+        stroke-width: 2px;
+        shape-rendering: crispEdges;
+      }
+
+      .weight {
+        fill: none;
+        stroke: #428bca;
+        stroke-width: 2px;
+      }
+
+      .weightarea {
+        fill: #428bca;
+        opacity: 0.5;
+      }
+
+      .height {
+        fill: none;
+        stroke: #5cb85c;
+        stroke-width: 2px;
+      }
+
+      .heightarea {
+        fill: #5cb85c;
+        opacity: 0.5;
+      }
+
+      .weightarea line {
+        stroke-width: 4px;
+      }
+
+      .y.axis.left {
+        fill: #428bca;
+      }
+
+      .y.axis.right {
+        fill: #5cb85c;
+      }
+
+      .panel-heading .accordion-toggle h4:after {
+        /* symbol for "opening" panels */
+        font-family: 'Glyphicons Halflings';  
+        content: "\e114";    
+        float: right;        
+        color: grey;        
+        overflow: no-display;
+      }
+      .panel-heading .accordion-toggle.collapsed h4:after {
+        /* symbol for "collapsed" panels */
+        content: "\e080";    
+      }
+      a.accordion-toggle{
+        text-decoration: none;
+      }
+
+      .couplesline{
+        stroke-width: 2px;
+      }
+    </style>
+
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h3 class="text-bold">
+        <a href="http://nounr.com/fermium/03/"> <img align="middle" height="32" width="32" src="/fermium/03/images/icon_26773.svg" alt="..."> </a>
+        &nbsp Plotting your baby grow
+      </h3>
+    </div>
+    <hr>
+
+    <!-- Controls -->
+    <div class="panel panel-default" id="accordion">
+      <div class="panel-heading">      
+        <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+          <h4 class="panel-title">When is your baby due?</h4>
+        </a>      
+      </div>
+      
+      <div id="collapseOne" class="panel-collapse collapse">
+        <div class="panel-body">
+          <div class="form-group">
+            <div class="row">
+              <label for="inputPeriod" class="col-sm-4 control-label">Date of last period:</label>
+              <div class="col-sm-4">
+                <input type="period" class="form-control" id="inputPeriod" placeholder="e.g. 8/9/2014">
+              </div>
+              <div class="col-sm-4">
+                <div id="parsing"></div>
+              </div>
+            </div>
+            <br>
+            <div class="row">
+              <label for="inputList" class="col-sm-4 control-label">Or select from the list:</label>
+              <div class="col-sm-4">
+                <select id="inputList">
+                  <option value="">Select your option</option>
+                  <option value="tamsett">Matthew &amp; Elise's baby</option>
+                  <option value="pat">    Patrick &amp; Catriona's baby</option>
+                  <option value="swift">  Nikki &amp; Jamie's baby</option>
+                  <option value="luigi">  Luigi &amp; Christina's baby</option>
+                  <option value="tom">    Tom &amp; Zainab's baby</option>
+                </select>
+              </div>
+              <div class="col-sm-4">
+                <div id="due"></div>
+              </div>
+            </div>
+            <div class="row">
+              <label class="col-sm-4 control-label">Or select some options:</label>
+              <div class="col-sm-4">
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox" id="showAll" value="">
+                    Show everyone
+                  </label>
+                </div>
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox" id="silly" value="">
+                    Enable silliness
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div> <!-- end of form group -->
+        </div> <!-- end of panel body -->
+      </div> <!-- end of collapsible panel -->
+    </div> <!-- end of controls -->
+
+    <!-- The plot -->
+    <div id="line_chart"></div>
+
+    <!-- Development info -->
+    <div class="panel panel-default">
+      <div class="panel-heading"><h4 class="panel-title">Baby's development</h4></div>
+      
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-4" id="baby_picture"></div>
+          <div class="col-sm-8">
+            <h4 id="baby_text_heading"></h4>
+            <p id="baby_text_size"></p>
+            <p id="baby_text_paragraph">
+              Click the plot for a description of your babies development at a given age.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Footer -->
+    <div class="row">
+      <div class="col-sm-7">
+        <p class="text-muted text-left">
+          <a href="http://nounr.com/fermium/03/"> <img height="32" width="32" align="middle" src="/fermium/03/images/icon_26773.svg" alt="..."> </a>
+          Icon: "Baby" by Jakob Vogel from The Noun Project.
+        </p>
+      </div>
+      <div class="col-sm-5">
+        <p class="text-right">&copy; Matthew &amp; Elise Tamsett 2014</p>
+      </div>
+    </div>
+  </div> <!-- End container -->
+  <!-- Load Javascript -->
+  <script src="http://code.jquery.com/jquery.js"></script>
+  <script type="text/javascript" src="/static/bootstrap-3.2.0-dist/js/bootstrap.js"></script>
+  <script src="http://nounr.com/static/d3.js"></script>
+  <script src="scripts/draw_line.js"></script>
+  <!-- JS to control panel collapse -->
+  <script>
+    $('div.accordion-body').on('shown', function () {
+      $(this).parent("div").find(".icon-chevron-down")
+        .removeClass("icon-chevron-down").addClass("icon-chevron-up");
+    });
+    $('div.accordion-body').on('hidden', function () {
+      $(this).parent("div").find(".icon-chevron-up")
+        .removeClass("icon-chevron-up").addClass("icon-chevron-down");
+    });
+  </script>
+  <!-- Retina support -->
+  <script src="/static/js/jquery.retinise.min.js"></script>
+  <script>
+    $(function() {
+    $('.retina').retinise();
+    });
+  </script>
+  
+</body>
+</html>

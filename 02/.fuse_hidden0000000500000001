@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Fermium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Matthew Tamsett">
+    <link rel="shortcut icon" href="/fermium/02/images/icon_26773.svg"/>
+
+    <!-- Bootstrap styling -->
+    <link href="http://nounr.com/static/bootstrap-3.2.0-dist/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Style -->
+    <style>
+    .jumbotron {
+      /*background: url('/fermium/02/images/image129_withone.jpeg');*/
+      background-size: 200%;
+      color: white;
+      opacity: 1;
+      text-shadow: #444 0 2px 2px;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .weight {
+      fill: none;
+      stroke: steelblue;
+      stroke-width: 1.5px;
+    }
+
+    .size {
+      fill: none;
+      stroke: red;
+      stroke-width: 1.5px;
+    }
+
+    /*image babypic {
+      box-shadow: 6px 4px 10px 10px #888888 !important;
+    }*/
+    </style>
+
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <ul class="nav nav-pills pull-right">
+        <li class="active"><a href="#">Home</a></li>
+        <!-- <li><a href="#">About</a></li>
+        <li><a href="#">Contact</a></li> -->
+      </ul>
+      <h3 class="text-bold">
+        <img height="32" width="32" src="/fermium/02/images/icon_26773.svg" alt="..."> 
+        &nbsp Fermium
+      </h3>
+    </div>
+    <hr>
+
+    <div class="jumbotron">
+      <h1>Plotting blueberry grow</h1>
+      <br><br><br><br><br><br>
+    </div>
+
+    <hr>
+
+    <div class="panel panel-default">
+      <div class="panel-heading">When is your baby due?</div>
+      <div class="panel-body">
+        <div class="form-group">
+          <div class="row">
+            <label for="inputPeriod" class="col-sm-3 control-label">Date of last period:</label>
+            <div class="col-sm-3">
+              <input type="period" class="form-control" id="inputPeriod" placeholder="8/9/2014">
+            </div>
+            <div class="col-sm-6">
+              <div id="parsing"></div>
+            </div>
+          </div>
+          <br>
+          <div class="row">
+            <label for="inputList" class="col-sm-3 control-label">Or select from the list:</label>
+            <div class="col-sm-6">
+              <select>
+                <option value="">Select your option</option>
+                <option value="hurr">Durr</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+
+    <div id="line_chart"></div>
+    <div class="panel panel-default">
+      <div class="panel-heading">Baby's development</div>
+      <div class="panel-body" id="baby_text"></div>
+    </div>
+
+    <hr>
+    <div>
+      <img class="pull-left" height="32" width="32" src="/fermium/02/images/icon_26773.svg" alt="..."> 
+      <p class="pull-left">
+        &nbsp; This icon is licensed under Creative Commons Attribution: "Baby by Jakob Vogel from The Noun Project"
+      </p>
+      <p class="pull-right">&copy; Matthew &amp; Elise Tamsett 2014</p>
+    </div>
+  </div> <!-- End container -->
+  <!-- Load Javascript -->
+  <script src="http://code.jquery.com/jquery.js"></script>
+  <script type="text/javascript" src="/static/bootstrap-3.2.0-dist/js/bootstrap.js"></script>
+  <script src="http://nounr.com/static/d3.js"></script>
+  <script src="scripts/draw_line.js"></script>
+
+  <!-- Javascript for jumbotron and date default-->
+  <script>
+    var jumboHeight = $('.jumbotron').outerHeight();
+    var offset = $('.jumbotron').offset()["top"];
+    // console.log("jumbo height: "+jumboHeight+", offset: "+offset)
+    function parallax(){
+        var scrolled = $(window).scrollTop();
+        var position = 40 + ((scrolled/(offset+jumboHeight))*30);
+        // console.log("position: "+position)
+        $('.jumbotron').css('background-position', '50% '+ position + '%');
+        // $('.jumbotron').css('opacity', ""+Math.max(0, (1 - (scrolled/(offset+jumboHeight)))));
+    }
+
+    window.onload = function(e){
+      parallax();
+    };
+    $(window).scroll(function(e){
+        parallax();
+    });
+  </script>
+  
+</body>
+</html>

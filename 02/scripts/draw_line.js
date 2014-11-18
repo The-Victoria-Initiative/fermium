@@ -1,0 +1,658 @@
+
+var margin = {top: 50, right: 200, bottom: 50, left: 200},
+    width = document.getElementById('line_chart').offsetWidth - margin.left - margin.right,
+    height = (width - margin.top - margin.bottom)/2;
+
+var x = d3.scale.linear().range([0, width]);
+var x_date = d3.time.scale().range([0, width]);
+
+var weight_y = d3.scale.linear().range([height, 0]);
+var size_y = d3.scale.linear().range([height, 0]);
+
+var xAxisBottom = d3.svg.axis().scale(x).orient("bottom");
+// var xAxisBottomMinor = d3.svg.axis().scale(x).orient("bottom");
+var xAxisTop = d3.svg.axis().scale(x_date).orient("top").tickFormat(d3.time.format("%b %y"));
+
+var yAxisLeft = d3.svg.axis().scale(weight_y).orient("left").ticks(5);
+var yAxisRight = d3.svg.axis().scale(size_y).orient("right").ticks(5); 
+
+var weight_line = d3.svg.line()
+    .x(function(d) { return x(d.age); })
+    .y(function(d) { return weight_y(d.weight); });
+
+var size_line = d3.svg.line()
+    .x(function(d) { return x(d.age); })
+    .y(function(d) { return size_y(d.measurement); });
+
+var bisectDate = d3.bisector(function(d) { return d.age; }).left;
+
+var today_line, today_textleft, today_textright, weight_focus, size_focus, silly_focus, summary_rect, silly_rect;
+
+var baby_text = {
+  5:{"min":3,"max":3,"heading":"3 weeks pregnant","text":"About six days after fertilisation the cluster of cells forms a hollow cavity, known as a blastocyst. The blastocyst burrows itself into the uterus lining. This process is called implantation. The woman is now considered to be three weeks pregnant because it is approximately three weeks since her last period."},
+  6:{"min":4,"max":4,"heading":"4 weeks pregnant","text":"The inner group of cells is now called an embryo. The outer cells reach out like roots to link with the mother’s blood supply to form the placenta. The inner cells form into two and then later into three layers. Each of these layers will grow to be different parts of the body."},
+  7:{"min":5,"max":5,"heading":"5 weeks pregnant","text":"The cells fold up and round to make a hollow tube called the neural tube. This will become the baby’s brain and spinal cord. By the end of this week, blood circulation will begin and the heart will develop quickly. The woman ‘misses’ her period."},
+  8:{"min":6,"max":7,"heading":"6-7 weeks pregnant","text":"The brain is developing distinct areas, and the eyes and ears are beginning to take shape. The heart begins to beat and can be seen beating on an ultrasound scan. Small swellings called ‘limb buds’ show where the arms and legs are growing."},
+  9:{"min":8,"max":9,"heading":"8-9 weeks pregnant","text":"The baby is now called a foetus, meaning ‘young one’. The face is slowly forming. The eyes are now more obvious and have some colour in them. There are now the beginnings of hands and feet, with ridges where the fingers and toes will be. The major internal organs are all developing."},
+  10:{"min":10,"max":12,"heading":"10-12 weeks pregnant","text":"Just 12 weeks after conception the foetus is fully formed. By now, almost all of the baby’s organs and structures have formed and will continue to grow until delivery. The baby is already moving about, but the movements cannot yet be felt."},
+  11:{"min":13,"max":20,"heading":"13-20 weeks pregnant","text":"The baby is now growing quickly. The body grows bigger so that the head and body are more in proportion. The face begins to look much more human and the hair is beginning to grow as well as eyebrows and eyelashes. The eyelids stay closed over the eyes. The steep change in your babies measured size at 20 weeks is actually due a change in how this is measured. Before 20 weeks the size is determined by the crown-rump length (the sitting height) beyond this the head to toe measurement is used."},
+  12:{"min":21,"max":24,"heading":"21-24 weeks pregnant","text":"At about 22 weeks the baby becomes covered in a very fine, soft hair called lanugo. The purpose of this is not known, but it is thought that it may be to keep the baby at the right temperature. It may be possible to feel the baby move for the first time."},
+  13:{"min":25,"max":26,"heading":"25-26 weeks pregnant","text":"The baby is now moving about vigorously and responds to touch and sound. The baby may also begin to follow a pattern for waking and sleeping. At around 26 weeks the baby’s eyelids open for the first time."},
+  14:{"min":27,"max":29,"heading":"27-29 weeks pregnant","text":"The baby’s heartbeat can now be heard through a stethoscope. The baby is now covered in a white greasy substance called vernix. It is thought that this may be to protect the baby’s skin as it floats in the amniotic sac."},
+  15:{"min":30,"max":31,"heading":"30-31 weeks pregnant","text":"The baby is growing plumper, so the skin which was quite wrinkled before, is now smoother. Both the vernix and the lanugo begin to disappear."},
+  16:{"min":32,"max":32,"heading":"32 weeks pregnant","text":"The baby is now beginning to prepare for birth. He or she will often turn downwards ready for the birth at around this time."},
+  17:{"min":33,"max":40,"heading":"33-42 weeks pregnant","text":"Some time before the birth, the head may move down into the pelvis and is said to be ‘engaged’. The average size of a full-term baby is 2.7 to 4.1kgs and 50-53cms long at birth. The placenta is about one-sixth of the baby’s weight, and the umbilical cord is almost as long as the baby."},
+}
+
+var conception_dates = {
+  "swift":    {"date":new Date(2014,6-1,18),"names":"Nikki & Jamie"},
+  "tamsett":  {"date":new Date(2014,9-1,8),"names":"Matthew & Elise"},
+  "pat":      {"date":new Date(2014,5-1,16),"names":"Patrick & Catriona"},
+  "luigi":    {"date":new Date(2014,8-1,22),"names":"Luigi & Christina"},
+  "tom":      {"date":new Date(2014,5-1,13),"names":"Tom & Zainab"},
+}
+
+var size_range = [];    
+var things     = [];
+// ,60,      70,85,100,110,180,200,550,800,12e3,15e3,25e3,6e5,5e6,10e6,25e6,100e6,1.2e9];
+size_range.push(50);
+things.push("baby");
+
+size_range.push(70);
+things.push("ocelot");
+
+var conception = new Date(conception_dates["tamsett"]["date"]);
+var date_options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+
+function setup_due_date(){
+  var due_date = new Date(conception.getTime() + 40*7*24*60*60*1000);
+  d3.select("#due")
+     .attr("class","alert alert-success")
+    .text("Due date: "+due_date.toLocaleDateString("en-Uk",date_options));
+}
+setup_due_date();
+
+var svg, heading, paragraph, picture, default_max_size, current_datum, all_data, weightarea, sizearea;
+function setup(){
+  svg = d3.select("#line_chart").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  picture = d3.select("#baby_picture").append("img")
+    .attr("class", "img-thumbnail")
+    .attr("height","256")
+    .attr("width","256")
+    .style("display", "none"); 
+
+  heading = d3.select("#baby_text").append("h4").style("display", "none");
+  paragraph = d3.select("#baby_text").append("p").style("display", "none");
+  
+  today_line   = svg.append("line").attr("class", "today").attr("opacity",1).style("display", "none");
+  today_textleft = svg.append("text").attr("class", "today textleft").attr("opacity",1).style("display", "none");
+  today_textright = svg.append("text").attr("class", "today textright").attr("opacity",1).style("display", "none");
+
+  weight_focus = svg.append("g").style("display", "none")
+  size_focus   = svg.append("g").style("display", "none")
+  silly_focus  = svg.append("g").style("display", "none")
+  summary_rect = size_focus.append("rect").attr("class","summaryrect").attr("opacity", .9);   
+  silly_rect   = silly_focus.append("rect").attr("class","sillyrect").attr("opacity", 0.);   
+  draw(svg);
+}
+
+function draw(svg){
+  d3.csv("data/growth_chart.csv", function(error, data) {
+    all_data = data;
+    // --- Axis domains
+    x_date.domain(d3.extent(data, function(d) {
+      var temp_date = new Date(conception.valueOf());
+      temp_date.setDate(temp_date.getDate() + (7*parseFloat(d.age)));
+      return temp_date; 
+    }));
+    x.domain(d3.extent(data, function(d) { return parseFloat(d.age); }));
+    weight_y.domain(d3.extent(data, function(d) { return parseFloat(d.weighthigh); }));
+    size_y.domain(d3.extent(data, function(d) { return parseFloat(d.measurementhigh); }));
+    default_max_size   = size_y.domain()[1];
+    var default_max_weight = weight_y.domain()[1];
+
+    // Area function for errors
+    weight_area = d3.svg.area()
+      .x(function(d)  { return x(d.age); })
+      .y0(function(d) { return weight_y(d.weightlow); })
+      .y1(function(d) { return weight_y(d.weighthigh); });
+
+    size_area = d3.svg.area()
+      .x(function(d) { return x(d.age); })
+      .y0(function(d) { return size_y(d.measurementlow); })
+      .y1(function(d) { return size_y(d.measurementhigh); });
+    
+    // -- Axis setup
+    svg.append("g")
+        .attr("class", "x axis top")
+        .attr("opacity",1)
+        .call(xAxisTop);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxisBottom.ticks(10))
+      .append("text")
+        .attr("transform", "translate("+(width-80)+",0)")
+        .attr("y", 40)
+        .text("Age [weeks]");
+
+    // svg.append("g")
+    //     .attr("class", "x axis")
+    //     .attr("transform", "translate(0," + height + ")")
+    //     .call(xAxisBottomMinor.ticks(40));
+
+    svg.append("g")
+        .attr("class", "y axis left")
+        .style("fill", "#428bca")
+        .call(yAxisLeft)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -35)
+        .style("text-anchor", "end")
+        .text("Weight [kg]");
+
+    svg.append("g")
+        .attr("class", "y axis right")
+        .attr("transform", "translate(" + width + " ,0)") 
+        .style("fill", "#5cb85c")
+        .call(yAxisRight)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 40)
+        .attr("dy", ".1em")
+        .style("text-anchor", "end")
+        .text("Size [cm]");
+
+    // --- Error areas
+    svg.append("path")
+       .datum(data)
+       .attr("class", "weightarea")
+       .attr("d", weight_area);
+
+    svg.append("path")
+       .datum(data)
+       .attr("class", "sizearea")
+       .attr("d", size_area);
+
+    // ---  Lines
+    svg.append("path")
+        .attr("class", "weight")
+        .attr("d", weight_line(data));
+
+    svg.append("path")
+        .attr("class", "size")
+        .attr("d", size_line(data));
+
+    // --- Tool tip
+    weight_focus.append("rect")
+         .attr("class","timespan")
+         .attr("fill","grey")
+         .attr("y",0)
+         .attr("height",height)
+         .style("opacity",0.1);
+    weight_focus.append("circle")                            
+        .attr("class", "y")                           
+        .style("fill", "none")                        
+        .style("stroke", "#428bca")                      
+        .attr("r", 4); 
+    weight_focus.append("line")
+        .attr("class", "y")
+        .style("stroke", "grey")
+        .style("stroke-dasharray", "3,3")
+        .style("opacity", 0.5)
+        .attr("x1", width)
+        .attr("x2", width);
+    weight_focus.append("text")
+        .attr("class", "y")
+        .attr("x", 20)
+        .attr("y", 20);
+
+    size_focus.append("circle")                            
+        .attr("class", "y")                           
+        .style("fill", "none")                        
+        .style("stroke", "#5cb85c")                      
+        .attr("r", 4);    
+    size_focus.append("line")
+        .attr("class", "x")
+        .style("stroke", "grey")
+        .style("stroke-dasharray", "3,3")
+        .style("opacity", 0.5)
+        .attr("y1", 0)
+        .attr("y2", height);
+    size_focus.append("line")
+        .attr("class", "y")
+        .style("stroke", "grey")
+        .style("stroke-dasharray", "3,3")
+        .style("opacity", 0.5)
+        .attr("x1", width)
+        .attr("x2", width);   
+    size_focus.append("text")
+        .attr("class", "y")
+        .attr("x", -40)
+        .attr("y", -20);
+
+    // --- Add extrapolation tool tips
+    silly_focus.append("line")
+        .attr("class","silly size")
+        .style("stroke", "#5cb85c")
+        .style("stroke-dasharray", "3,3")
+        .style("opacity", 1);
+    var sillysummary = silly_focus.append("text")
+        .attr("class", "sillysummary")
+        .attr("opacity",0.)
+        .attr("x", 10)
+        .attr("y", 0);
+
+    // --- Add in a fixed line for today
+    draw_today_line();
+
+    // --- Add in the lines for couples
+    draw_all_couples();
+ 
+    // --- Add in the summary text
+    var summary = size_focus.append("text")
+        .attr("class", "summary")
+        .attr("opacity",0.9)
+        .attr("x", 40)
+        .attr("y", 70);
+    
+    // size_focus.append("text")
+    //     .attr("class", "credit")
+    //     .attr("x", 200)
+    //     .attr("y", 300)
+    //     .attr("font-size", 8)
+    //     .style("fill","grey");
+
+    // append the rectangle to capture mouse          
+    svg.append("rect")                                
+        .attr("width", width)                         
+        .attr("height", height)                       
+        .style("fill", "none")                        
+        .style("pointer-events", "all")               
+        .on("mouseover", function() {
+          picture.style("display", null);
+          heading.style("display", null);
+          paragraph.style("display", null);
+          weight_focus.style("display", null);
+          size_focus.style("display", null);
+          if (d3.select("#silly").property("checked")){
+            silly_focus.style("display", null);
+          }
+        })
+        .on("mouseout", function() { 
+          // picture.style("display", "none");
+          // paragraph.style("display", "none"); 
+          // weight_focus.style("display", "none"); 
+          // size_focus.style("display", "none"); 
+        })
+        .on("mousemove", mousemove);                  
+
+    function mousemove() {                            
+        var x0 = x.invert(d3.mouse(this)[0]),         
+            i = bisectDate(data, x0, 1),              
+            d0 = data[i - 1],                         
+            d1 = data[i],                             
+            d = x0 - d0.age > d1.age - x0 ? d1 : d0;
+            i = x0 - d0.age > d1.age - x0 ? i : i-1;
+        current_datum = d;
+
+        weight_focus.select("rect.timespan")
+            .transition().duration(100)                 
+            .attr("x",x(baby_text[d.slide]["min"]-0.5)) 
+            .attr("width",function(){
+              return x(Math.min(39.5, baby_text[d.slide]["max"]) + 0.5 ) - x(baby_text[d.slide]["min"]-0.5);
+            });
+
+        weight_focus.select("circle.y")                   
+            .attr("transform",                        
+                  "translate(" + x(d.age) + "," +    
+                                 weight_y(d.weight) + ")"); 
+
+        weight_focus.select("line.y")
+            .attr("transform", "translate(0," +weight_y(d.weight) + ")")
+            .attr("x1", x(d.age))
+            .attr("x2", 0);
+
+        weight_focus.select("text.y")
+            .attr("transform",
+                  "translate(" + x(d.age) + "," +
+                                 weight_y(d.weight) + ")")
+            .text((d.weight*1000).toFixed(0)+" g");
+
+        size_focus.select("circle.y")                 
+            .attr("transform",                        
+                  "translate(" + x(d.age) + "," +    
+                                 size_y(d.measurement) + ")");   
+
+        size_focus.select("line.x")
+            .attr("transform","translate(" + x(d.age) + ",0)");
+
+        size_focus.select("line.y")
+            .attr("transform", "translate(0," +size_y(d.measurement) + ")")
+            .attr("x1", x(d.age))
+            .attr("x2", width);
+
+        size_focus.select("text.y")
+            .attr("transform",
+                  "translate(" + x(d.age) + "," +
+                                 size_y(d.measurement) + ")")
+            .text((d.measurement*1).toFixed(0)+" cm");
+
+        size_focus.select("text.summary")
+            .text(function(){
+              var line = "At "+d.age+" weeks, on ";
+              var temp_date = new Date(conception.valueOf());
+              temp_date.setDate(temp_date.getDate() + (7*parseFloat(d.age)));
+              line += temp_date.toLocaleDateString("en-Uk",date_options);
+              line += ", your baby will be the size of "+d.berry;
+              return line
+            });
+        
+        var bbox = summary.node().getBBox();
+        summary_rect.attr("x", bbox.x-6)
+            .attr("y", bbox.y-6)
+            .attr("width", bbox.width+12)
+            .attr("height", bbox.height+12)
+            .attr("ry", 4)
+            .attr("rx", 4)
+            .style("fill", "#eee");
+
+        
+
+        // size_focus.select("text.credit")
+        //     .text("Source: NHS choices");
+
+        // --- Write the text
+        picture
+            .attr("alt","...")
+            .attr("src", function(){
+              return "/fermium/02/images/slideshow_"+d.slide+".jpg";
+            });
+            // .style("filter", "url(#drop-shadow)");
+
+        heading
+          .text( function () {
+            return baby_text[parseInt(d.slide)]["heading"];
+          });
+
+        paragraph
+          .text( function () {
+            return baby_text[parseInt(d.slide)]["text"];
+          });
+
+        // --- Draw the extrapolation line
+        if (d3.select("#silly").property("checked")){
+          silly_focus.select(".silly.size")
+            .attr("x1",x(d.age))
+            .attr("x2",width)
+            .attr("y1",size_y(d.measurement))
+            .attr("y2",function(){
+              var a0 = data[i - 1].age                      
+              var a1 = data[i].age
+              var w0 = parseFloat(data[i-1].measurement);
+              var w1 = parseFloat(data[i].measurement);
+              var dw = w1 / w0;
+              var w_max = w0 * (Math.pow(dw,(40-parseFloat(a0))));
+
+              // Now resize the axis and move everything
+              size_y.domain([0,Math.max(default_max_size, w_max)]);
+              size_focus.select("circle.y").attr("transform","translate(" + x(d.age) + "," +size_y(d.measurement) + ")");   
+              size_focus.select("line.y").attr("transform", "translate(0," +size_y(d.measurement) + ")");
+              size_focus.select("text.y").attr("transform", "translate(" + x(d.age) + "," +size_y(d.measurement) + ")")
+
+              // var t = svg.transition().duration(50);
+              svg.select(".y.axis.right").call(yAxisRight);
+              svg.select("path.size").attr("d", size_line(data));
+              svg.select("path.sizearea").attr("d", size_area);
+              
+              
+              silly_focus.select("text.sillysummary")
+                  .attr("opacity",0.9)
+                  .text(function(){
+                    var line = "In the last week your baby has increased in size by a factor of: "+dw.toFixed(1);
+                    line = line + ", at this rate they'll be "+w_max.toFixed(0)+" cm tall."
+                    return line
+                  });
+              
+              var bbox = sillysummary.node().getBBox();
+              silly_rect.attr("opacity",0.9)
+                  .attr("x", bbox.x-6)
+                  .attr("y", bbox.y-6)
+                  .attr("width", bbox.width+12)
+                  .attr("height", bbox.height+12)
+                  .attr("ry", 4)
+                  .attr("rx", 4)
+                  .style("fill", "#eee");
+
+              return size_y(w_max);
+            });
+        }
+    }
+  });
+}
+setup();
+
+// Draw all couple lines
+var all_couples;
+function draw_all_couples(){
+  all_couples = svg.append("g").attr("class", "couples").attr("opacity",0);
+
+  // var colours = ["#584D47","#CECA8B","#ECDD98","#B2D3B8","#F5D0B5"];
+  var colours = ["#563552","#524E67","#6D7F7F","#A8AD8D","#CD7466"];
+  var iter = 0;
+  for (var name in conception_dates){
+    var this_date = conception_dates[name]["date"];
+
+    var today = new Date();
+    var timePassed = Math.abs(today.getTime() - this_date.getTime());
+    var weeksPassed = (timePassed / (1000 * 3600 * 24 * 7));
+    var toGo = (40 - weeksPassed)*7;
+    
+    all_couples.append("line")
+        .attr("class", "couplesline")
+        .style("stroke", colours[iter])
+        .attr("y1", 25+(iter*25))
+        .attr("y2", height)
+        .attr("x1", x(weeksPassed))
+        .attr("x2", x(weeksPassed));
+
+    all_couples.append("text")
+        .attr("class", "couplestext")
+        .style("fill", colours[iter])
+        .attr("y", 25+(iter*25))
+        .attr("x", x(weeksPassed)+10)
+        .style("text-anchor", "start")
+        .text(conception_dates[name]["names"]);
+
+    all_couples.append("text")
+        .attr("class", "couplestext")
+        .style("fill", colours[iter])
+        .attr("y", 45+(iter*25))
+        .attr("x", x(weeksPassed)+10)
+        .style("text-anchor", "start")
+        .text((toGo).toFixed(0)+" days to go");
+
+    iter += 1;
+  }
+}
+
+// Interact with the form
+function isValidDate(s) {
+  var bits = s.split('/');
+  var d = new Date(bits[2], bits[1] - 1, bits[0]);
+  return d && (d.getMonth() + 1) == bits[1] && d.getDate() == Number(bits[0]);
+} 
+
+// Input from text
+var parsed = d3.select("#parsing");
+d3.select("#inputPeriod").on("input", function() {
+  var text = this.value;
+  var substrings = text.split("/");
+  var day = "dd";
+  var month = "mm";
+  var year = "yyyy";
+  // console.log(text.length);
+  // console.log(substrings);
+  if ( (substrings.length != 3) || (substrings[2].length != 4) ){
+    parsed.text("e.g. "+day+"/"+month+"/"+year)
+          .attr("class","alert alert-warning")
+          .attr("role","alert");
+  } else {
+    day = parseInt(substrings[0]);
+    month = parseInt(substrings[1]);
+    year = parseInt(substrings[2]);
+    var string_date = day+"/"+month+"/"+year;
+    if (isValidDate(string_date)){
+      conception = new Date(year,month-1,day);
+      rescale_date_axis();
+      draw_today_line();
+      parsed.attr("class","alert alert-success")
+             .text("Last period: "+conception.toLocaleDateString("en-Uk",date_options));
+      setup_due_date();
+    } else {
+      parsed.attr("class","alert alert-danger")
+            .text("Invalid date, day: "+day+", month: "+month+", year: "+year);
+    }
+  }
+});
+
+function rescale_date_axis(){
+  var end_date = new Date(conception.valueOf());
+  end_date.setDate(end_date.getDate() + (7*40));
+  x_date.domain([conception,end_date]);
+  var t = svg.transition().duration(1500);
+  t.select(".x.axis.top").call(xAxisTop);
+}
+
+var drawn_today_line = false;
+
+function draw_today_line(){
+  var today = new Date();
+  var timeDiff = Math.abs(today.getTime() - conception.getTime());
+  var diffWeeks = (timeDiff / (1000 * 3600 * 24 * 7));
+  var toGo = (40 - diffWeeks)*7;
+
+  if ((diffWeeks >= 3) && (diffWeeks <= 40)){
+    // draw for the first time
+    if (!drawn_today_line){
+      today_line
+          .style("display",null)
+          .style("stroke", "grey")
+          .attr("y1", 0)
+          .attr("y2", height)
+          .attr("x1", x(diffWeeks))
+          .attr("x2", x(diffWeeks));
+
+      today_textleft
+         .style("display",null)
+         .attr("x", x(diffWeeks)-10)
+         .attr("y", 20)
+         .style("fill","grey")
+         .style("text-anchor", "end")
+         .text("Today");
+      
+      today_textright
+         .style("display",null)
+         .attr("x", x(diffWeeks)+10)
+         .attr("y", 20)
+         .style("fill","grey")
+         .style("text-anchor", "start")
+         .text((toGo).toFixed(0)+" days to go");
+      drawn_today_line = true;
+    } else {
+      // Transition
+      today_line.transition().duration(1500).attr("x1", x(diffWeeks)).attr("x2", x(diffWeeks));
+      today_textleft.transition().duration(1500).attr("x", x(diffWeeks)-10);
+      today_textright.transition().duration(1500).attr("x", x(diffWeeks)+10);
+      today_textright.text((toGo).toFixed(0)+" days to go");
+    }
+  // hide
+  } else {
+    today_line.style("display","none");
+    today_textleft.style("display","none");
+    today_textright.style("display","none");
+    drawn_today_line = false;
+  }
+}
+
+// Input from list
+d3.select("#inputList").on("change", function() {
+  var text = this.value;
+  console.log(text);
+  conception = new Date(conception_dates[text]["date"]);
+  rescale_date_axis();
+  draw_today_line();
+  parsed.attr("class","alert alert-success")
+         .text("Last period: "+conception.toLocaleDateString("en-Uk",date_options));
+  setup_due_date();
+})
+
+// Checkbox options
+d3.select("#showAll").on("change", function() {
+  if (this.checked){
+    // Switch to show all mode
+    today_line.transition().duration(1500).attr("opacity",0);
+    today_textleft.transition().duration(1500).attr("opacity",0);
+    today_textright.transition().duration(1500).attr("opacity",0);
+    d3.selectAll(".x.axis.top").transition().duration(1500).attr("opacity",0);
+    d3.selectAll("text.summary").transition().duration(1500).attr("opacity",0);
+    summary_rect.transition().duration(1500).attr("opacity",0);
+
+    d3.selectAll(".couples").transition().duration(1500).attr("opacity",1);
+  } else {
+    // Switch back to previous mode
+    if (!d3.select("#silly").property("checked")){
+      today_line.transition().duration(1500).attr("opacity",1);
+      today_textleft.transition().duration(1500).attr("opacity",1);
+      today_textright.transition().duration(1500).attr("opacity",1);
+      d3.selectAll(".x.axis.top").transition().duration(1500).attr("opacity",1);
+      d3.selectAll("text.summary").transition().duration(1500).attr("opacity",1);
+      summary_rect.transition().duration(1500).attr("opacity",0.9);
+    }
+
+    d3.selectAll(".couples").transition().duration(1500).attr("opacity",0);
+
+  }
+});
+
+// Silly extrapolations
+d3.select("#silly").on("change", function() {
+  if (this.checked){
+    // Switch to silly
+    today_line.transition().duration(1500).attr("opacity",0);
+    today_textleft.transition().duration(1500).attr("opacity",0);
+    today_textright.transition().duration(1500).attr("opacity",0);
+    d3.selectAll(".x.axis.top").transition().duration(1500).attr("opacity",0);
+    d3.selectAll("text.summary").transition().duration(1500).attr("opacity",0);
+    summary_rect.transition().duration(1500).attr("opacity",0);
+  } else {
+    // Switch back to previous mode
+    if (!d3.select("#showAll").property("checked")){
+      today_line.transition().duration(1500).attr("opacity",1);
+      today_textleft.transition().duration(1500).attr("opacity",1);
+      today_textright.transition().duration(1500).attr("opacity",1);
+      d3.selectAll(".x.axis.top").transition().duration(1500).attr("opacity",1);
+      d3.selectAll("text.summary").transition().duration(1500).attr("opacity",1);
+      summary_rect.transition().duration(1500).attr("opacity",0.9);
+    }
+    silly_rect.transition().duration(1500).attr("opacity",0);
+    silly_focus.style("display", "none");
+
+    // -- Rescale size axis to default
+    size_y.domain([0,default_max_size]);
+    size_focus.select("circle.y").transition().duration(1500).attr("transform","translate(" + x(current_datum.age) + "," +size_y(current_datum.measurement) + ")");   
+    size_focus.select("line.y").transition().duration(1500).attr("transform", "translate(0," +size_y(current_datum.measurement) + ")");
+    size_focus.select("text.y").transition().duration(1500).attr("transform", "translate(" + x(current_datum.age) + "," +size_y(current_datum.measurement) + ")")
+
+    // var t = svg.transition().duration(50);
+    svg.select(".y.axis.right").transition().duration(1500).call(yAxisRight);
+    svg.select("path.size").transition().duration(1500).attr("d", size_line(all_data));
+    svg.select("path.sizearea").transition().duration(1500).attr("d", size_area);
+  }
+});
